@@ -1,5 +1,6 @@
 from agents.base_agent import BaseAgent
 from llm.llm_client import LLMClient
+from summarizer.research_summarizer import ResearchSummarizer
 
 class ResearcherAgent(BaseAgent):
     """
@@ -13,20 +14,41 @@ class ResearcherAgent(BaseAgent):
 
 
 
+    # def __init__(self, llm_client: LLMClient):
+    #     super().__init__(llm_client)
+    #     self.system_prompt = self.load_prompt("prompts/researcher.txt")
+    #
+    # def run(self, input_data: dict) -> dict:
+    #     document = input_data.get("document", "")
+    #     company = input_data.get("company_name", "Unknown Company")
+    #
+    #     user_prompt = f"Please analyze the following report about {company} and summarize key findings, risks, and opportunities.\n\n{document}"
+    #
+    #     summary = self.llm.chat(system_prompt=self.system_prompt, user_prompt=user_prompt)
+    #
+    #     return {
+    #         "agent": "Researcher",
+    #         "company": company,
+    #         "summary": summary
+    #     }
     def __init__(self, llm_client: LLMClient):
         super().__init__(llm_client)
-        self.system_prompt = self.load_prompt("prompts/researcher.txt")
+        self.summarizer = ResearchSummarizer(llm_client)
 
     def run(self, input_data: dict) -> dict:
-        document = input_data.get("document", "")
-        company = input_data.get("company_name", "Unknown Company")
+        symbol = input_data.get("symbol", "UNKNOWN")
+        query = input_data.get("query", f"{symbol} recent earnings and outlook")
 
-        user_prompt = f"Please analyze the following report about {company} and summarize key findings, risks, and opportunities.\n\n{document}"
-
-        summary = self.llm.chat(system_prompt=self.system_prompt, user_prompt=user_prompt)
+        # 🔄 RAG 기반 뉴스 요약 수행
+        summary_data = self.summarizer.summarize(
+            symbol=symbol,
+            query=query,
+            top_k=5
+        )
 
         return {
             "agent": "Researcher",
-            "company": company,
-            "summary": summary
+            "symbol": symbol,
+            "summary": summary_data["summary"],
+            "sources": summary_data["sources"]
         }

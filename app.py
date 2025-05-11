@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import re
 
 from llm.llm_client import LLMClient
 from coordinator.coordinator import Coordinator
@@ -31,6 +32,10 @@ positions = {
 }
 st.write("보유 종목:", positions)
 
+
+if "pipeline_result" not in st.session_state:
+    st.session_state["pipeline_result"] = None
+
 # 실행
 if st.button("🚀 에이전트 실행"):
     st.info("에이전트를 실행 중입니다... 잠시만 기다려주세요.")
@@ -48,11 +53,60 @@ if st.button("🚀 에이전트 실행"):
         }
     })
 
+    st.session_state["pipeline_result"] = result  # ✅ 저장
+
     # 출력
     st.success("에이전트 실행 완료!")
 
     st.subheader("🧠 Researcher 요약")
-    st.markdown(result["research"]["summary"])
+
+    summary_text = result["research"]["summary"]
+
+    # 1. 섹션별로 파싱
+    sections = {
+        "Key Findings": "",
+        "Risks": "",
+        "Opportunities": ""
+    }
+
+    st.text(result["research"]["summary"])
+
+    matches = re.split(r"###\s+", summary_text)
+    for section in matches:
+        if section.startswith("Key Findings"):
+            sections["Key Findings"] = section.replace("Key Findings:", "").strip()
+        elif section.startswith("Risks"):
+            sections["Risks"] = section.replace("Risks:", "").strip()
+        elif section.startswith("Opportunities"):
+            sections["Opportunities"] = section.replace("Opportunities:", "").strip()
+
+    # 2. 요약 출력
+    for title, content in sections.items():
+        st.markdown(f"**🔹 {title}**")
+        st.markdown(content if content else "_No data available_")
+        st.markdown("---")
+
+    # 3. 뉴스 출처 출력
+    with st.expander("🔍 Sources"):
+        for i, src in enumerate(result["research"].get("sources", [])):
+            st.markdown(f"**{i + 1}.** {src.splitlines()[0]}")
+            st.markdown("> " + src.splitlines()[1] if len(src.splitlines()) > 1 else "")
+            st.markdown("")
+
+    # 4. 다운로드 버튼
+    download_text = (
+        f"# Investment Summary for {result['symbol']}\n\n"
+        f"## Key Findings\n{sections['Key Findings']}\n\n"
+        f"## Risks\n{sections['Risks']}\n\n"
+        f"## Opportunities\n{sections['Opportunities']}"
+    )
+
+    st.download_button(
+        label="📥 Download Research Report",
+        data=download_text,
+        file_name=f"{result['symbol']}_summary.md",
+        mime="text/markdown"
+    )
 
     st.subheader("📊 Analyst 분석")
     st.markdown(result["analysis"]["technical_analysis"])
