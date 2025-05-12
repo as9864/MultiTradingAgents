@@ -1,6 +1,8 @@
 import pandas as pd
 from agents.base_agent import BaseAgent
 from llm.llm_client import LLMClient
+from infoharvester.market.data_loader import load_price_data
+
 
 class AnalystAgent(BaseAgent):
     """
@@ -15,6 +17,9 @@ class AnalystAgent(BaseAgent):
     def __init__(self, llm_client: LLMClient):
         super().__init__(llm_client)
         self.system_prompt = self.load_prompt("prompts/analyst.txt")
+
+
+
 
     def calculate_indicators(self, df: pd.DataFrame) -> dict:
         df = df.copy()
@@ -37,7 +42,8 @@ class AnalystAgent(BaseAgent):
 
     def run(self, input_data: dict) -> dict:
         symbol = input_data.get("symbol", "UNKNOWN")
-        df = input_data.get("price_data")
+        df = input_data.get("price_data") #기존 price_data 호출 파트 수정
+        # df = load_price_data(symbol)
 
         if df is None or df.empty:
             return {"error": "No price data provided"}
@@ -58,5 +64,6 @@ class AnalystAgent(BaseAgent):
             "agent": "Analyst",
             "symbol": symbol,
             "technical_analysis": analysis,
-            "indicators": indicators
+            "indicators": indicators,
+            "price_data": df
         }

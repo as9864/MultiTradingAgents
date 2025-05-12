@@ -3,6 +3,8 @@ from agents.analyst_agent import AnalystAgent
 from agents.trader_agent import TraderAgent
 from agents.risk_manager_agent import RiskManagerAgent
 from llm.llm_client import LLMClient
+from infoharvester.market.data_loader import load_price_data
+
 
 class Coordinator:
     def __init__(self, llm_client: LLMClient):
@@ -19,12 +21,24 @@ class Coordinator:
         portfolio = input_data.get("portfolio", {})
 
         # 1️⃣ ResearcherAgent: 기업 정보 요약
+        # researcher_output = self.researcher.run({
+        #     "company_name": symbol,
+        #     "document": document
+        # })
+        #
+        # # 2️⃣ AnalystAgent: 기술 분석
+        # analyst_output = self.analyst.run({
+        #     "symbol": symbol,
+        #     "price_data": price_data
+        # })
+        # 1️⃣ ResearcherAgent: 벡터 검색 기반 요약
         researcher_output = self.researcher.run({
-            "company_name": symbol,
-            "document": document
+            "symbol": symbol,
+            "query": f"{symbol} recent financial outlook"
         })
 
-        # 2️⃣ AnalystAgent: 기술 분석
+        # 2️⃣ AnalystAgent: 가격 데이터 불러오기 + 지표 계산
+        price_data = load_price_data(symbol)
         analyst_output = self.analyst.run({
             "symbol": symbol,
             "price_data": price_data

@@ -21,16 +21,22 @@ def test_full_pipeline():
     )
     price_data = get_sample_price_data()
 
-    result = coordinator.run_pipeline(symbol, document, price_data)
+    dictData = {
+        "symbol": symbol,
+        "price_data": price_data,
+        "document": document
+    }
+
+    result = coordinator.run(dictData)
 
     print("\n🧠 Coordinator Full Result:")
     print(f"Symbol: {result['symbol']}")
     print("\n--- Research Output ---")
     print(result["research"]["summary"])
     print("\n--- Technical Analysis ---")
-    print(result["analysis"]["analysis"])
+    print(result["analysis"])
     print("\n--- Trader Decision ---")
-    print(result["decision"]["decision"])
+    print(result["trader"])
 
 
 if __name__ == "__main__":
