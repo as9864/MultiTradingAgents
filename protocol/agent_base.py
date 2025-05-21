@@ -1,4 +1,5 @@
 from protocol.message import Message
+import os
 
 class AgentBase:
     """
@@ -14,3 +15,12 @@ class AgentBase:
         :return: 응답 메시지
         """
         raise NotImplementedError(f"{self.name} agent must implement handle_message()")
+
+    def load_prompt(self, path: str) -> str:
+        full_path = os.path.join(os.path.dirname(__file__), '..', path)
+        try:
+            with open(full_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except FileNotFoundError:
+            print(f"[ERROR] Prompt file not found: {full_path}")
+            return ""

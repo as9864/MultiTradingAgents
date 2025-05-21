@@ -1,42 +1,49 @@
 import streamlit as st
-from infoharvester.orchestrator.gather_runner import run_full_pipeline
-from coordinator.coordinator import Coordinator
 from llm.llm_client import LLMClient
-from utils.translator import translate_text
+from coordinator.mcp_coordinator import MCPCoordinator
+from agents.researcher_agent import ResearcherAgent
+from agents.analyst_agent import AnalystAgent
+from agents.trader_agent import TraderAgent
+from agents.risk_manager_agent import RiskManagerAgent
+from agents import researcher_agent, analyst_agent, trader_agent, risk_manager_agent
+from protocol.router import MessageRouter
+import pprint
 
-st.set_page_config(page_title="AgentTrader", layout="wide")
-st.title("📊 AI 주식 분석 시스템 (AgentTrader)")
-lang = st.selectbox("🌐 언어 선택 / Language", ["English", "한국어"])
-st.header("💡 트레이더 판단 결과" if lang == "한국어" else "💡 Trader Decision")
+# 💡 Streamlit 설정
+st.set_page_config(page_title="AgentTrader MCP", layout="wide")
+st.title("🧠 AgentTrader MCP 기반 AI 투자 분석기")
 
+# ✅ 입력 UI
+symbol = st.text_input("🔍 분석할 종목코드 (예: AAPL, TSLA)", value="AAPL")
 
+# ✅ 실행 상태 기억
+if "mcp_result" not in st.session_state:
+    st.session_state["mcp_result"] = None
 
-symbol = st.text_input("분석할 종목 코드 입력 (예: AAPL, TSLA)", value="AAPL")
+# ✅ 분석 실행 버튼
+if st.button("🚀 MCP 기반 분석 실행"):
+    with st.spinner("🧠 에이전트 협업 중..."):
 
-target_lang = "ko" if lang == "한국어" else "en"
-
-# ✅ 결과 상태 초기화
-if "analysis_result" not in st.session_state:
-    st.session_state["analysis_result"] = None
-
-if st.button("🚀 분석 실행"):
-    with st.spinner("📡 데이터 수집 중..."):
-        run_full_pipeline(symbol)
-
-    with st.spinner("🧠 에이전트 판단 중..."):
+        # MCP 기반 에이전트 구성
         llm = LLMClient()
-        coordinator = Coordinator(llm)
-        result = coordinator.run({"symbol": symbol, "portfolio": {"cash": 10000}})
-        st.session_state["analysis_result"] = result
-        st.success("✅ 분석 완료!")
+        router = MessageRouter({
+            "Researcher": ResearcherAgent(llm),
+            "Analyst": AnalystAgent(llm),
+            "Trader": TraderAgent(llm),
+            "RiskManager": RiskManagerAgent(llm),
+        })
 
-# ✅ 이전 실행 결과 불러오기
-result = st.session_state.get("analysis_result")
+        coordinator = MCPCoordinator(router)
+        result = coordinator.run(symbol=symbol)
+        st.session_state["mcp_result"] = result
+
+# ✅ 결과 표시
+result = st.session_state.get("mcp_result")
 if result:
+    st.success("✅ 분석 완료!")
+
     st.header("📚 Research Summary")
-    research_result = result["research"]["summary"]
-    translated_research= translate_text(research_result)
-    st.markdown(translated_research)
+    st.markdown(result["research"]["summary"])
 
     st.header("📈 Analyst Insight")
     st.markdown(result["analysis"]["technical_analysis"])
@@ -49,28 +56,29 @@ if result:
     st.markdown(result["risk_review"]["review"])
     st.markdown(f"**Approved:** `{result['risk_review']['approved']}`")
 
-    st.header("💰 Updated Portfolio")
+    st.header("💰 Final Portfolio")
     st.json(result["final_portfolio"])
 
+    # 다운로드 버튼
     report_md = f"""
-# Investment Summary: {symbol}
+# MCP Investment Summary: {symbol}
 
-## Research Summary
+## 📚 Research Summary
 {result['research']['summary']}
 
-## Technical Indicators
+## 📈 Indicators
 {result['analysis']['indicators']}
 
-## Analyst Summary
+## 📊 Analyst
 {result['analysis']['technical_analysis']}
 
-## Trader Decision
+## 💡 Trader Decision
 {result['trader']['decision']}
 
-## Risk Review
+## 🔐 Risk Review
 {result['risk_review']['review']}
 
-## Portfolio After Trade
+## 💰 Final Portfolio
 {result['final_portfolio']}
 """
-    st.download_button("📥 리포트 다운로드 (.md)", data=report_md, file_name=f"{symbol}_summary.md", mime="text/markdown")
+    st.download_button("📥 분석 결과 다운로드 (.md)", report_md, file_name=f"{symbol}_summary.md")
