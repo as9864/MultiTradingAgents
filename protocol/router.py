@@ -22,13 +22,16 @@ class MessageRouter:
         print(f"📨 Dispatch: {message.summary()}")
 
         receiver = self.agents.get(message.receiver)
-        if receiver and isinstance(receiver, AgentBase):
-            response = receiver.handle_message(message)
-            return response
-        else:
+        receiver = self.agents.get(message.receiver)
+        if not receiver:
+            print(f"[Router ERROR] '{message.receiver}' agent not found in router.agents: {list(self.agents.keys())}")
             return Message(
                 sender="Router",
                 receiver=message.sender,
                 type="error",
                 content={"error": f"Unknown agent: {message.receiver}"}
             )
+
+        if receiver and isinstance(receiver, AgentBase):
+            response = receiver.handle_message(message)
+            return response

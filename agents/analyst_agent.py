@@ -7,6 +7,7 @@ from protocol.message import Message
 from infoharvester.market.yahoo_finance import fetch_price_history
 from infoharvester.market.indicator_utils import apply_indicators
 
+
 class AnalystAgent(AgentBase):
     """
     기술적 지표를 계산하고 이를 해석하도록 LLM에 요청하는 에이전트
